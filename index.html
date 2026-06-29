@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parcours éducatif de santé — Collège Yves du Manoir</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Export Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase (compat). Si erreur de chargement : remplacer 10.12.0 par la dernière version sur firebase.google.com -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --ink:#14242F; --bg:#F1F4F7; --surface:#FFFFFF; --manoir:#163A53;
+  --line:#E0E6EC; --muted:#5E6E7A;
+  --connaitre:#2E78B5; --comprendre:#2F9E6B; --agir:#E08A2B; --transmettre:#7C53C2; --prevention:#64798A;
+  --connaitre-l:#E7F0F8; --comprendre-l:#E5F4EC; --agir-l:#FBEEDC; --transmettre-l:#EFE8F8; --prevention-l:#ECEFF2;
+  --r:14px; --shadow:0 1px 2px rgba(20,36,47,.06), 0 8px 24px rgba(20,36,47,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.display{font-family:"Bricolage Grotesque","Inter",system-ui,sans-serif;letter-spacing:-.01em}
+.wrap{max-width:1240px;margin:0 auto;padding:0 22px}
+
+.topbar{background:var(--manoir);color:#fff;position:sticky;top:0;z-index:30}
+.topbar .wrap{display:flex;align-items:center;gap:18px;min-height:68px;flex-wrap:wrap;padding:10px 22px}
+.brand{display:flex;flex-direction:column}
+.brand .school{font-family:"Bricolage Grotesque";font-weight:800;font-size:18px;line-height:1.1}
+.brand .sub{font-size:12.5px;color:#AFC6D6;margin-top:2px}
+.motto{font-style:italic;color:#CFE0EB;font-size:13px;border-left:2px solid #2E5A78;padding-left:12px;margin-left:4px}
+.topbar .spacer{flex:1}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{font:inherit;font-weight:600;font-size:13px;border:1px solid transparent;border-radius:10px;padding:8px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--manoir)}
+.btn:hover{filter:brightness(.97)}
+.btn.ghost{background:rgba(255,255,255,.10);color:#fff;border-color:rgba(255,255,255,.28)}
+.btn.ghost:hover{background:rgba(255,255,255,.18)}
+.btn.primary{background:var(--agir);color:#fff}
+.btn.danger{background:#fff;color:#C0392B;border-color:#E7C3BD}
+.btn.sm{padding:6px 11px;font-size:12.5px}
+.pill{font-size:11.5px;font-weight:600;border-radius:999px;padding:5px 11px;white-space:nowrap}
+.pill.local{color:#0e2a3b;background:#FFD27D}
+.pill.cloud{color:#0b3d2c;background:#9BE3BE}
+.userline{font-size:12px;color:#CFE0EB}
+
+.tabs{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:68px;z-index:20}
+.tabs .wrap{display:flex;gap:4px;overflow-x:auto}
+.tab{font:inherit;font-weight:600;font-size:13.5px;color:var(--muted);background:none;border:none;border-bottom:2.5px solid transparent;padding:13px 14px;cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--manoir);border-color:var(--manoir)}
+
+.banner{background:#FFF6E2;border:1px solid #F2D88A;color:#7a5800;border-radius:12px;padding:12px 16px;margin:18px 0;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+
+.view{display:none;padding:22px 0 60px}
+.view.active{display:block}
+.view-head{margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.view-head .txt{max-width:74ch}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--agir)}
+.view-head h2{font-size:26px;margin:6px 0 4px}
+.view-head p{margin:0;color:var(--muted)}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;font-size:12.5px;color:var(--muted)}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+.filters{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:14px 0 20px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.fgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fgroup .flabel{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-right:2px}
+.chip{font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.chip:hover{border-color:#C4D0D9}
+.chip.active{color:#fff;background:var(--manoir);border-color:var(--manoir)}
+
+.parcours{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.pcol{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.pcol-head{padding:16px 16px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#FAFCFD)}
+.pcol-head .lvl{font-family:"Bricolage Grotesque";font-weight:800;font-size:30px;color:var(--manoir);line-height:1}
+.pcol-head .note{font-size:12.5px;color:var(--muted);margin-top:8px}
+.pcol-body{padding:12px;display:flex;flex-direction:column;gap:10px;flex:1}
+.card{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff}
+.card.ghost{border-style:dashed;background:#FCFDFE}
+.card .ttl{font-weight:600;font-size:13.5px;line-height:1.35}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{font-size:10.5px;font-weight:600;color:var(--muted);background:#F2F5F8;border-radius:6px;padding:3px 7px;white-space:nowrap}
+.tag.per{color:var(--manoir);background:#EAF1F6}
+.card .who{font-size:11.5px;color:var(--muted);margin-top:7px}
+.badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:3px 7px}
+.badge.todo{color:#8a6100;background:#FFF1D4}
+.badge.proj{color:#7C53C2;background:var(--transmettre-l)}
+
+.gantt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table.gantt{border-collapse:collapse;width:100%;min-width:900px}
+table.gantt th,table.gantt td{border-bottom:1px solid var(--line);padding:0}
+table.gantt thead th{position:sticky;top:0;background:#FAFCFD;font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;padding:10px 0}
+table.gantt thead th.lab{text-align:left;padding-left:16px;width:340px}
+.grow .lcell{padding:11px 16px;border-right:1px solid var(--line)}
+.grow .lcell .eb{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.grow .lcell .nm{font-weight:600;font-size:13px;line-height:1.3;margin:2px 0 5px}
+.grow .lcell .mini{display:flex;gap:5px;flex-wrap:wrap}
+.mcell{width:7.2%;text-align:center;border-right:1px solid #F0F3F6;position:relative;height:54px}
+.bar{position:absolute;left:3px;right:3px;top:50%;transform:translateY(-50%);height:18px;border-radius:5px;opacity:.92}
+.gnote{font-size:11px;color:#8a6100;background:#FFF6E2;display:inline-block;padding:3px 9px;border-radius:6px;margin:6px 0 0}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.pj{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);border-top:4px solid var(--line);padding:16px;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+.pj:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.pj .eb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.pj h3{font-size:15px;margin:5px 0 9px;line-height:1.3}
+.pj .meta{display:flex;flex-wrap:wrap;gap:6px}
+
+.modal{position:fixed;inset:0;background:rgba(14,36,49,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal.open{display:flex}
+.sheet{background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.3);position:relative}
+.sheet-head{padding:20px 22px 14px;border-bottom:1px solid var(--line);border-top:5px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.sheet-head .eb{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sheet-head h3{margin:5px 0 0;font-size:20px;line-height:1.25}
+.sheet-body{padding:6px 22px 18px}
+.sheet-foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:#fff}
+.kv{display:grid;grid-template-columns:160px 1fr;gap:4px 14px;padding:11px 0;border-bottom:1px solid #F0F3F6;font-size:13.5px}
+.kv dt{color:var(--muted);font-weight:600}.kv dd{margin:0}
+.close{position:absolute;top:16px;right:18px;border:none;background:#F2F5F8;border-radius:9px;width:32px;height:32px;font-size:18px;cursor:pointer;color:var(--muted);z-index:3}
+
+.field{margin:14px 0}
+.field label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
+.field input[type=text],.field textarea,.field select{width:100%;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink)}
+.field textarea{resize:vertical;min-height:60px}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks label{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;margin:0}
+.checks input{margin:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.tbl{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;font-size:13.5px}
+.tbl th{background:#FAFCFD;text-align:left;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:11px 14px;border-bottom:1px solid var(--line)}
+.tbl td{padding:11px 14px;border-bottom:1px solid #F0F3F6;vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .grp td{background:#F6F9FB;font-weight:700;color:var(--manoir);font-size:12px;letter-spacing:.03em;text-transform:uppercase}
+.num{font-variant-numeric:tabular-nums;font-weight:600}.cible{color:var(--agir);font-weight:700}
+
+.thread{display:flex;flex-direction:column;gap:12px}
+.tr{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tr .from,.tr .to{padding:15px 17px;flex:1}.tr .from{background:#FAFCFD}
+.tr .arrow{display:flex;align-items:center;padding:0 6px;color:var(--transmettre);font-size:22px}
+.tr .lb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.tr .big{font-weight:600;font-size:14px;line-height:1.35}.tr .sm{font-size:12px;color:var(--muted);margin-top:5px}
+
+.footer{border-top:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:12.5px}
+.footer .wrap{padding:18px 22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between}
+.footer a{color:var(--manoir);font-weight:600;text-decoration:none}
+
+.gate{position:fixed;inset:0;background:linear-gradient(160deg,#163A53,#0c2433);display:none;align-items:center;justify-content:center;z-index:80;padding:24px}
+.gate.open{display:flex}
+.gate .box{background:#fff;border-radius:18px;max-width:420px;width:100%;padding:34px 30px;text-align:center}
+.gate h2{margin:0 0 6px;font-size:22px;color:var(--manoir)}
+.gate p{color:var(--muted);font-size:13.5px;margin:0 0 20px}
+.gate .gbtn{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--line);border-radius:11px;padding:12px 18px;cursor:pointer;background:#fff;display:inline-flex;gap:9px;align-items:center}
+.gate .err{color:#C0392B;font-size:13px;margin-top:14px;min-height:18px}
+
+@media(max-width:980px){.parcours{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.parcours{grid-template-columns:1fr}.motto{display:none}.row2{grid-template-columns:1fr}}
+@media print{.no-print{display:none!important}.topbar{position:static}.tabs{display:none}.view{display:none!important}.view.active{display:block!important}body{background:#fff}.gantt-scroll{overflow:visible;border:none}.pj,.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<header class="topbar no-print">
+  <div class="wrap">
+    <div class="brand">
+      <span class="school">Collège Yves du Manoir — Vaucresson</span>
+      <span class="sub">Parcours éducatif de santé · Année 2026-2027</span>
+    </div>
+    <span class="motto">« Bouger aujourd'hui pour mieux vivre demain. »</span>
+    <span class="spacer"></span>
+    <div class="actions">
+      <span class="pill local" id="modePill">Mode local</span>
+      <span class="userline" id="userLine"></span>
+      <button class="btn ghost" id="signoutBtn" style="display:none" onclick="doSignOut()">Se déconnecter</button>
+      <button class="btn ghost" onclick="exportExcel()">⬇ Excel</button>
+      <button class="btn ghost" onclick="window.print()">⬇ PDF</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs no-print"><div class="wrap" id="tabs"></div></nav>
+
+<main class="wrap">
+  <div class="banner no-print" id="seedBanner" style="display:none">
+    <span>La base est vide. Importer les 18 actions de départ issues des bilans ?</span>
+    <button class="btn sm primary" onclick="importSeed()">Importer les données de départ</button>
+  </div>
+
+  <section class="view active" data-view="parcours">
+    <div class="view-head"><div class="txt">
+      <div class="eyebrow">La question centrale</div>
+      <h2>Ce qu'un élève vit à YDM, de la 6<sup>e</sup> à la 3<sup>e</sup></h2>
+      <p>Chaque colonne = une année. Chaque carte = une expérience, colorée selon son pilier. Pointillés = à programmer / en construction.</p>
+    </div></div>
+    <div class="legend" id="legend"></div>
+    <div class="parcours" id="parcours"></div>
+  </section>
+
+  <section class="view" data-view="retro">
+    <div class="view-head"><div class="txt">
+      <div class="eyebrow">Qui fait quoi, et quand</div>
+      <h2>Rétro-planning de l'année</h2>
+      <p>De septembre à juillet. Chaque barre = la période d'une action ; la couleur indique le pilier.</p>
+    </div></div>
+    <div class="filters no-print" id="filters"></div>
+    <div class="gantt-scroll" id="gantt"></div>
+  </section>
+
+  <section class="view" data-view="projets">
+    <div class="view-head">
+      <div class="txt">
+        <div class="eyebrow">Le détail — modifiable</div>
+        <h2>Projets & démarches</h2>
+        <p>Cliquez une carte pour voir le détail, modifier ou supprimer. Bouton « Ajouter » pour une nouvelle action.</p>
+      </div>
+      <button class="btn primary editonly" style="display:none" onclick="openEdit(null)">+ Ajouter une action</button>
+    </div>
+    <div class="grid" id="projets"></div>
+  </section>
+
+  <section class="view" data-view="acteurs">
+    <div class="view-head"><div class="txt">
+      <div class="eyebrow">L'équipe et les partenaires</div>
+      <h2>Acteurs — qui intervient</h2>
+      <p>Enseignants, vie scolaire, santé scolaire, partenaires, élèves et ambassadeurs.</p>
+    </div></div>
+    <table class="tbl" id="acteurs"></table>
+  </section>
+
+  <section class="view" data-view="fil">
+    <div class="view-head"><div class="txt">
+      <div class="eyebrow">Le 4<sup>e</sup> pilier en action</div>
+      <h2>Fil rouge — les ambassadeurs</h2>
+      <p>Un élève qui a vécu une expérience la transmet l'année suivante. C'est le moteur « Transmettre ».</p>
+    </div></div>
+    <div class="thread" id="fil"></div>
+  </section>
+
+  <section class="view" data-view="indic">
+    <div class="view-head"><div class="txt">
+      <div class="eyebrow">Mesurer pour piloter</div>
+      <h2>Indicateurs de suivi</h2>
+      <p>Repères 2025-2026 (issus des bilans) et cibles à fixer pour 2026-2027.</p>
+    </div></div>
+    <table class="tbl" id="indic"></table>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>Support du dossier <strong>Fonds d'innovation pédagogique</strong> — « Notre école, faisons-la ensemble ».</span>
+    <a href="https://www.ac-versailles.fr/cnr92" target="_blank" rel="noopener">ac-versailles.fr/cnr92 ↗</a>
+  </div>
+</footer>
+
+<!-- Détail -->
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="sheet">
+    <div class="sheet-head"><button class="close" onclick="closeModal()">×</button>
+      <div class="eb" id="m-eb"></div><h3 id="m-ttl"></h3></div>
+    <div class="sheet-body"><dl id="m-body"></dl></div>
+    <div class="sheet-foot editonly" style="display:none">
+      <button class="btn danger" id="m-del">Supprimer</button>
+      <button class="btn primary" id="m-edit">Modifier</button>
+    </div>
+  </div>
+</div>
+
+<!-- Édition -->
+<div class="modal" id="editModal" onclick="if(event.target===this)closeEdit()">
+  <div class="sheet">
+    <div class="sheet-head"><button class="close" onclick="closeEdit()">×</button>
+      <div class="eb">Action / démarche</div><h3 id="e-title">Nouvelle action</h3></div>
+    <div class="sheet-body">
+      <div class="field"><label>Domaine / projet</label><input type="text" id="e-domaine" placeholder="ex : Plein Air Hauts-de-Seine"></div>
+      <div class="field"><label>Action / démarche *</label><textarea id="e-action" placeholder="Décrire l'action"></textarea></div>
+      <div class="row2">
+        <div class="field"><label>Niveau(x)</label><div class="checks" id="e-niveaux"></div></div>
+        <div class="field"><label>Classes / effectif</label><input type="text" id="e-classes" placeholder="ex : 3 classes (72 él.)"></div>
+      </div>
+      <div class="field"><label>Pilier(s)</label><div class="checks" id="e-piliers"></div></div>
+      <div class="row2">
+        <div class="field"><label>Axe (Parcours éducatif de santé)</label><select id="e-axe"></select></div>
+        <div class="field"><label>Statut</label><select id="e-statut"></select></div>
+      </div>
+      <div class="field"><label>Porteur (matière / service)</label><input type="text" id="e-porteur" placeholder="ex : EPS × SVT"></div>
+      <div class="field"><label>Intervenants</label><textarea id="e-intervenants" placeholder="Enseignants, référents…"></textarea></div>
+      <div class="field"><label>Élèves / ambassadeurs</label><input type="text" id="e-eleves"></div>
+      <div class="row2">
+        <div class="field"><label>Partenaires extérieurs</label><input type="text" id="e-partenaires"></div>
+        <div class="field"><label>Vie sco / santé / admin</label><input type="text" id="e-viesco"></div>
+      </div>
+      <div class="field"><label>Période (mois actifs)</label><div class="checks" id="e-mois"></div></div>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn" onclick="closeEdit()">Annuler</button>
+      <button class="btn primary" onclick="saveEdit()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Connexion -->
+<div class="gate" id="gate">
+  <div class="box">
+    <h2>Parcours santé — YDM</h2>
+    <p>Accès réservé à l'équipe. Connectez-vous avec votre compte Google académique.</p>
+    <button class="gbtn" onclick="doSignIn()"><span style="font-weight:800;color:#4285F4">G</span> Se connecter avec Google</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<script>
+/* ============ CONFIGURATION — à compléter (voir le guide) ============ */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyB5NobH3p1Km5J5ckRL-TmTTxyryhGXc1Q",
+  authDomain:"retroplanning-36c35.firebaseapp.com",
+  projectId:"retroplanning-36c35",
+  storageBucket:"retroplanning-36c35.firebasestorage.app",
+  messagingSenderId:"25574694182",
+  appId:"1:25574694182:web:c4b09780533690d09075e7"
+};
+// Emails autorisés en écriture/lecture (vide = tout compte Google connecté).
+const ALLOWED_EMAILS=["florianeude@gmail.com","cosperecemeric@gmail.com"]; // ajouter l'email Gmail de la collègue SVT quand tu l'auras
+/* ===================================================================== */
+
+const MONTHS=["Sept","Oct","Nov","Déc","Jan","Fév","Mars","Avr","Mai","Juin","Juil"];
+const NIVEAUX=["6e","5e","4e","3e"];
+const PILLARS={
+  "Se connaître":{c:"--connaitre",o:1},"Comprendre":{c:"--comprendre",o:2},
+  "Agir":{c:"--agir",o:3},"Transmettre":{c:"--transmettre",o:4},"Prévention":{c:"--prevention",o:5}
+};
+const AXES=["Éducation à la santé","Prévention","Protection de la santé"];
+const STATUTS=["Reconduit","Étendu","Nouveau","En projet","À compléter"];
+const NIVEAU_NOTE={
+  "6e":"Découverte & repères : se connaître (dépistage, tests), bouger en pleine nature, vivre ensemble.",
+  "5e":"Comprendre & agir : 10 000 pas, premiers secours, premiers rôles d'ambassadeur.",
+  "4e":"S'aguerrir : orientation, raids nature, prévention — l'autonomie grandit.",
+  "3e":"Transmettre : performance maîtrisée, encadrement UNSS, bilan santé sur 4 ans."
+};
+
+const SEED=[
+ {domaine:"Santé scolaire",action:"Dépistage santé (taille, poids, IMC, vue/audition)",niveaux:["6e"],classes:"3 classes",piliers:["Se connaître"],axe:"Protection de la santé",porteur:"Infirmerie",intervenants:"Infirmière scolaire",eleves:"Élèves de 6e",partenaires:"—",viesco:"Infirmière scolaire",statut:"Reconduit",mois:[0,1]},
+ {domaine:"Suivi de la condition physique",action:"Évaluation nationale des aptitudes physiques (endurance, force, vitesse)",niveaux:["6e"],classes:"3 classes",piliers:["Se connaître"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec",eleves:"Élèves de 6e",partenaires:"Éducation nationale (DEPP)",viesco:"—",statut:"Reconduit",mois:[0]},
+ {domaine:"Suivi de la condition physique",action:"Bilan de condition physique — outil numérique (6 catégories, score /100, suivi évolution 4 ans)",niveaux:["6e","5e","4e","3e"],classes:"11 classes · ~290 él.",piliers:["Se connaître"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec",eleves:"Tous les élèves",partenaires:"—",viesco:"Chef d'établissement (accès lecture) · Bilan parents (ENT)",statut:"Reconduit",mois:[0,1,2,3]},
+ {domaine:"Association Sportive (UNSS)",action:"Créneaux AS hebdomadaires : Futsal · Circuit Training · Cross · Multi-activités",niveaux:["6e","5e","4e","3e"],classes:"~80 licenciés",piliers:["Agir"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec · N. Peronnis (AED)",eleves:"Licenciés UNSS",partenaires:"UNSS Versailles",viesco:"—",statut:"Reconduit",mois:[0,1,2,3,4,5,6,7,8,9]},
+ {domaine:"Association Sportive (UNSS)",action:"Jeunes Officiels — formation & certification (arbitrage, organisation)",niveaux:["5e","4e","3e"],classes:"16 JO · 27 certif.",piliers:["Transmettre"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec",eleves:"Élèves Jeunes Officiels (ambassadeurs)",partenaires:"UNSS Versailles",viesco:"—",statut:"Reconduit",mois:[0,1,2,3,4,5,6,7,8,9]},
+ {domaine:"Association Sportive (UNSS)",action:"Compétitions district & académie (cross, futsal, circuit training)",niveaux:["6e","5e","4e","3e"],classes:"Équipes UNSS",piliers:["Agir"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec",eleves:"Licenciés UNSS",partenaires:"UNSS · districts 92",viesco:"—",statut:"Reconduit",mois:[2,3,4,5,6,7,8]},
+ {domaine:"Plein Air Hauts-de-Seine",action:"Biathlon (course + tir laser) — 3 cycles de 7 séances + matinée banalisée compétitive",niveaux:["3e"],classes:"3 classes (62 él.)",piliers:["Se connaître","Agir"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec · réf. Dept 92 (B. Aubry)",eleves:"Élèves de 3e",partenaires:"Département 92 (matériel + éducateur)",viesco:"—",statut:"Reconduit",mois:[1,2,3,4,5,6,7]},
+ {domaine:"Bien Manger pour Bien Bouger",action:"Matinée banalisée : atelier « petit-déjeuner équilibré » (quiz/livret) + Défi Hyrox",niveaux:["6e"],classes:"3 classes (78 él.)",piliers:["Comprendre","Agir"],axe:"Éducation à la santé",porteur:"EPS × SVT",intervenants:"E. Cosperec · Mme Dussaut (SVT) · Berlioz-Pagnat (EPS) · Mme Acquier · profs libérés (Doucet, Rousseau, Sabrié, Reynaudo) · livret co-conçu avec l'infirmière",eleves:"Élèves de 6e + ambassadeurs ex-6e (5e)",partenaires:"Self / agents (Tamby, Kichenin)",viesco:"Infirmière (livret)",statut:"Reconduit",mois:[3]},
+ {domaine:"Séjour Cohésion Montagne",action:"Séjour ski à Chamrousse : cohésion, vie collective, ski alpin, sécurité avalanche (DVA), biathlon, maison de l'environnement",niveaux:["6e"],classes:"3 classes (72 él.)",piliers:["Agir"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"E. Cosperec (resp.) · F. Eude (appli cohésion) · Sabrié · De La Forcade · Descharmes · Cridlig · Acquier",eleves:"Élèves de 6e",partenaires:"ESF Chamrousse",viesco:"—",statut:"Reconduit",mois:[6,7]},
+ {domaine:"Voyage à travers l'Europe (podomètre)",action:"Défi 10 000 pas/jour (OMS) sur carte virtuelle de l'Europe — sensibilisation à la sédentarité",niveaux:["5e"],classes:"3 classes (72 él.)",piliers:["Comprendre","Agir","Transmettre"],axe:"Éducation à la santé",porteur:"EPS × SVT",intervenants:"F. Eude · Mme Dussaut (SVT) · 14 membres du personnel",eleves:"Élèves de 5e + 2 ambassadeurs référents / classe (collecte, saisie)",partenaires:"Financement Association Sportive",viesco:"—",statut:"Reconduit",mois:[7,8]},
+ {domaine:"Plein Air Hauts-de-Seine",action:"Cycle course d'orientation au Haras de Jardy (6 séances)",niveaux:["6e"],classes:"3 classes",piliers:["Agir"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec · réf. Dept 92 (S. Ruffio)",eleves:"Élèves de 6e",partenaires:"Département 92",viesco:"—",statut:"Reconduit",mois:[7,8,9]},
+ {domaine:"Plein Air Hauts-de-Seine",action:"Projet AZIMUT — journée banalisée course d'orientation (Haras de Jardy)",niveaux:["4e"],classes:"2 classes",piliers:["Agir"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec · Berlioz-Pagnat · réf. Dept 92 (S. Ruffio)",eleves:"Élèves de 4e",partenaires:"Département 92",viesco:"—",statut:"Reconduit",mois:[8]},
+ {domaine:"Plein Air Hauts-de-Seine",action:"Trophée Aventure 92 (CO, bike & run, biathlon, parcours ninja, ateliers cohésion)",niveaux:["4e"],classes:"2 classes (étendu)",piliers:["Agir"],axe:"Éducation à la santé",porteur:"EPS",intervenants:"F. Eude · E. Cosperec · Département 92",eleves:"Élèves de 4e",partenaires:"Département 92",viesco:"—",statut:"Étendu",mois:[8,9]},
+ {domaine:"Premiers secours (PSC1)",action:"Formation Prévention et Secours Civiques niveau 1 (parcours Éléa + sessions pratiques + certification)",niveaux:["5e"],classes:"3 classes (~76 él.)",piliers:["Comprendre","Transmettre"],axe:"Prévention",porteur:"EPS",intervenants:"F. Eude · E. Cosperec",eleves:"Élèves de 5e (futurs ambassadeurs « gestes qui sauvent »)",partenaires:"—",viesco:"Familles (information)",statut:"Reconduit",mois:[8,9]},
+ {domaine:"SVT — éducation à la santé",action:"Contenus santé du cycle 4 en appui des projets (alimentation, activité physique, corps) — à préciser",niveaux:["5e","4e","3e"],classes:"—",piliers:["Comprendre"],axe:"Éducation à la santé",porteur:"SVT",intervenants:"Mme Dussaut (SVT)",eleves:"Élèves",partenaires:"—",viesco:"—",statut:"À compléter",mois:[]},
+ {domaine:"Vie scolaire — EVARS",action:"Éducation à la vie affective, relationnelle et sexuelle (3 séances/an)",niveaux:["6e","5e","4e","3e"],classes:"Tous",piliers:["Comprendre"],axe:"Prévention",porteur:"Vie scolaire / CPE",intervenants:"CPE · Vie scolaire (+ infirmière, intervenants extérieurs)",eleves:"Tous les élèves",partenaires:"À définir",viesco:"CPE",statut:"À compléter",mois:[]},
+ {domaine:"Vie scolaire — pHARe",action:"Programme de lutte contre le harcèlement (ambassadeurs élèves)",niveaux:["6e","5e","4e","3e"],classes:"Tous",piliers:["Transmettre"],axe:"Prévention",porteur:"Vie scolaire / CPE",intervenants:"CPE · Vie scolaire",eleves:"Élèves ambassadeurs pHARe",partenaires:"—",viesco:"CPE",statut:"À compléter",mois:[]},
+ {domaine:"Prévention santé (sommeil, addictions, écrans)",action:"Sensibilisation sommeil / addictions / écrans — projet en construction",niveaux:["4e","3e"],classes:"À définir",piliers:["Comprendre"],axe:"Prévention",porteur:"À définir (EPS / SVT / Vie sco / infirmière)",intervenants:"À définir",eleves:"Élèves de 4e et 3e",partenaires:"Intervenants extérieurs éventuels",viesco:"À définir",statut:"En projet",mois:[]}
+];
+
+const ACTEURS=[
+ ["Équipe EPS","M. Florian Eude","Professeur d'EPS — porteur principal","Condition physique, podomètre, plein air, PSC1, AS, appli cohésion ski"],
+ ["Équipe EPS","M. Emeric Cosperec","Professeur d'EPS","AS, plein air, PSC1, petit-déj, responsable séjour ski"],
+ ["Équipe EPS","M. Berlioz-Pagnat","Professeur d'EPS (TZR)","AZIMUT, petit-déj Hyrox"],
+ ["SVT","Mme Dussaut","Professeure de SVT","Podomètre, petit-déj, contenus santé cycle 4"],
+ ["Autres enseignants","Mme Acquier · M. Sabrié","Professeurs","Petit-déj, séjour ski"],
+ ["Autres enseignants","Mme Doucet · Mme Rousseau · M. Reynaudo","Professeurs (libérés)","Petit-déj « Bien Manger Bien Bouger »"],
+ ["Autres enseignants","Mme De La Forcade · Mme Descharmes · Mme Cridlig","Professeures","Accompagnatrices séjour ski"],
+ ["Vie scolaire & santé","N. Peronnis","Assistant d'éducation (AED)","Co-animation de l'AS du mercredi"],
+ ["Vie scolaire & santé","Infirmière scolaire","Santé scolaire","Dépistage 6e, livret nutrition petit-déj"],
+ ["Vie scolaire & santé","CPE / Vie scolaire","Vie scolaire","EVARS, pHARe (à renseigner)"],
+ ["Vie scolaire & santé","Agents (Mme Tamby · M. Kichenin)","Personnel de service","Logistique self — petit-déj"],
+ ["Administration","Chef d'établissement","Direction","Pilotage, accès suivi condition physique, dossier FIP"],
+ ["Partenaires extérieurs","Département des Hauts-de-Seine","Dispositif Plein Air 92","CO (S. Ruffio), Biathlon (B. Aubry), Trophée Aventure"],
+ ["Partenaires extérieurs","UNSS — Académie de Versailles","Sport scolaire","Affiliation, compétitions, Jeunes Officiels"],
+ ["Partenaires extérieurs","ESF Chamrousse","École de ski","Encadrement ski du séjour 6e"],
+ ["Partenaires extérieurs","Mairie de Vaucresson","Collectivité","Partenariats locaux (financement)"],
+ ["Élèves & ambassadeurs","Jeunes Officiels UNSS","Élèves ambassadeurs","Arbitrage et organisation des compétitions"],
+ ["Élèves & ambassadeurs","Référents podomètre","Élèves ambassadeurs","2 par classe — collecte & saisie des pas"],
+ ["Élèves & ambassadeurs","Ex-6e (devenus 5e)","Élèves ambassadeurs","Encadrement de l'atelier petit-déj / Hyrox"],
+ ["Élèves & ambassadeurs","Élèves PSC1","Élèves ambassadeurs","Diffusion des gestes qui sauvent"]
+];
+const INDICATEURS=[
+ ["Licenciés UNSS (AS)","80","","Bilan AS 2025-2026"],
+ ["Part de filles à l'AS","22,5 %","à augmenter","Bilan AS"],
+ ["Jeunes Officiels certifiés","16 élèves (27 certif.)","","Bilan AS"],
+ ["Élèves certifiés PSC1","59 (2 classes)","~76 (3 classes)","Bilan PSC1"],
+ ["Participation podomètre","94,7 % (54/57)","","Bilan podomètre"],
+ ["Pas cumulés (2 classes)","4 120 366 pas · 2 678 km","","Bilan podomètre"],
+ ["Élèves concernés Plein Air","~237","","Bilan plein air"],
+ ["Tests condition physique saisis","1 000 / 5 510 (18 %)","à augmenter","Bilan EPS Santé"],
+ ["Aptitudes physiques 6e","baseline endurance/force/vitesse","suivi","Évaluation nationale 25QP61"]
+];
+const FIL=[
+ ["Petit-déj « Bien Manger Bien Bouger » + Hyrox","Vécu en 6e","Encadre l'atelier des nouveaux 6e","Revient en 5e — décembre"],
+ ["PSC1 — premiers secours","Vécu en 5e","Ambassadeur « gestes qui sauvent » auprès des pairs","Dès la certification"],
+ ["Association Sportive — UNSS","Dès la 6e/5e","Jeune Officiel : arbitrage & organisation","Toute l'année"],
+ ["Podomètre — Voyage à travers l'Europe","Vécu en 5e","Référent de classe : collecte & saisie","Avril-mai"],
+ ["pHARe (à programmer)","Tous niveaux","Ambassadeur anti-harcèlement (vie scolaire)","À définir"]
+];
+
+/* ---------- état ---------- */
+let DATA=[];           // working set : {_id, ...fields}
+let MODE="local";      // 'local' | 'cloud'
+let db=null, auth=null, currentUser=null, canEdit=false, editingId=null;
+
+const cv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const primaryPillar=a=>(a.piliers||["Agir"]).slice().sort((x,y)=>(PILLARS[x]?.o||9)-(PILLARS[y]?.o||9))[0];
+const pColor=a=>cv(PILLARS[primaryPillar(a)]?.c||"--agir");
+function periode(m){m=m||[];if(!m.length)return"à programmer";const a=Math.min(...m),b=Math.max(...m);return a===b?MONTHS[a]:MONTHS[a]+"–"+MONTHS[b];}
+function statutBadge(s){if(s==="À compléter")return'<span class="badge todo">à compléter</span>';if(s==="En projet")return'<span class="badge proj">en projet</span>';return"";}
+
+/* ---------- init ---------- */
+function isConfigured(){return FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith("VOTRE_") && typeof firebase!=="undefined";}
+function init(){
+  buildTabs();buildLegend();buildFilters();buildActeurs();buildFil();buildIndic();buildEditForm();
+  if(isConfigured()){ MODE="cloud"; startCloud(); }
+  else { MODE="local"; startLocal(); }
+}
+function startLocal(){
+  document.getElementById("modePill").className="pill local";
+  document.getElementById("modePill").textContent="Aperçu — données locales (non connecté)";
+  canEdit=true; toggleEditUI();
+  DATA=SEED.map((x,i)=>({_id:"local-"+i,...x}));
+  renderAll();
+}
+function startCloud(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  auth=firebase.auth(); db=firebase.firestore();
+  document.getElementById("modePill").className="pill cloud";
+  document.getElementById("modePill").textContent="Connecté — base partagée";
+  auth.onAuthStateChanged(u=>{
+    if(!u){ currentUser=null; canEdit=false; toggleEditUI(); document.getElementById("gate").classList.add("open"); return; }
+    if(ALLOWED_EMAILS.length && !ALLOWED_EMAILS.includes((u.email||"").toLowerCase())){
+      document.getElementById("gateErr").textContent="Ce compte n'est pas autorisé.";
+      auth.signOut(); return;
+    }
+    currentUser=u; canEdit=true; toggleEditUI();
+    document.getElementById("gate").classList.remove("open");
+    document.getElementById("userLine").textContent=u.email;
+    document.getElementById("signoutBtn").style.display="";
+    subscribe();
+  });
+}
+function subscribe(){
+  db.collection("actions").onSnapshot(snap=>{
+    DATA=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    document.getElementById("seedBanner").style.display=DATA.length?"none":"flex";
+    renderAll();
+  },err=>console.error(err));
+}
+function doSignIn(){ if(!auth)return; auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>document.getElementById("gateErr").textContent=e.message); }
+function doSignOut(){ if(auth)auth.signOut(); }
+function importSeed(){
+  if(MODE!=="cloud")return;
+  const b=db.batch();
+  SEED.forEach(a=>b.set(db.collection("actions").doc(),a));
+  b.commit().then(()=>document.getElementById("seedBanner").style.display="none");
+}
+function toggleEditUI(){ document.querySelectorAll(".editonly").forEach(el=>el.style.display=canEdit?"":"none"); }
+
+/* ---------- CRUD ---------- */
+function addAction(obj){ if(MODE==="cloud")return db.collection("actions").add(obj); DATA.push({_id:"local-"+Date.now(),...obj}); renderAll(); return Promise.resolve(); }
+function updateAction(id,obj){ if(MODE==="cloud")return db.collection("actions").doc(id).update(obj); const i=DATA.findIndex(a=>a._id===id); if(i>=0)DATA[i]={_id:id,...obj}; renderAll(); return Promise.resolve(); }
+function deleteAction(id){ if(MODE==="cloud")return db.collection("actions").doc(id).delete(); DATA=DATA.filter(a=>a._id!==id); renderAll(); return Promise.resolve(); }
+
+/* ---------- render ---------- */
+function renderAll(){ buildParcours();buildGantt();buildProjets(); }
+function buildTabs(){
+  const T=[["parcours","Parcours 6e→3e"],["retro","Rétro-planning"],["projets","Projets"],["acteurs","Acteurs"],["fil","Fil rouge ambassadeurs"],["indic","Indicateurs"]];
+  document.getElementById("tabs").innerHTML=T.map((t,i)=>`<button class="tab${i===0?' active':''}" data-t="${t[0]}">${t[1]}</button>`).join("");
+  document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.dataset.view===b.dataset.t));
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+}
+function buildLegend(){
+  document.getElementById("legend").innerHTML=Object.keys(PILLARS).map(p=>`<span class="lg"><span class="dot" style="background:${cv(PILLARS[p].c)}"></span>${p}</span>`).join("")+
+   ' <span class="lg"><span class="dot" style="background:#fff;border:1px dashed #aaa"></span>à compléter / en projet</span>';
+}
+function buildParcours(){
+  document.getElementById("parcours").innerHTML=NIVEAUX.map(n=>{
+    const list=DATA.filter(a=>(a.niveaux||[]).includes(n)).sort((x,y)=>(PILLARS[primaryPillar(x)]?.o||9)-(PILLARS[primaryPillar(y)]?.o||9));
+    const cards=list.map(a=>{
+      const col=pColor(a);const ghost=(a.statut==="À compléter"||a.statut==="En projet");
+      return `<div class="card${ghost?' ghost':''}" style="border-left-color:${col}">
+        <div class="ttl">${esc(a.action)}</div>
+        <div class="meta"><span class="tag" style="color:${col}">${primaryPillar(a)}</span><span class="tag per">${periode(a.mois)}</span>${statutBadge(a.statut)}</div>
+        <div class="who">${esc(a.porteur||"")}</div></div>`;
+    }).join("");
+    return `<div class="pcol"><div class="pcol-head"><div class="lvl">${n}</div><div class="note">${NIVEAU_NOTE[n]}</div></div>
+      <div class="pcol-body">${cards||'<div class="card ghost"><div class="ttl">—</div></div>'}</div></div>`;
+  }).join("");
+}
+let F={niveau:"Tous",pilier:"Tous"};
+function buildFilters(){
+  const niv=["Tous",...NIVEAUX], pil=["Tous",...Object.keys(PILLARS)];
+  document.getElementById("filters").innerHTML=
+   `<div class="fgroup"><span class="flabel">Niveau</span>${niv.map(n=>`<button class="chip${F.niveau===n?' active':''}" data-f="niveau" data-v="${n}">${n}</button>`).join("")}</div>`+
+   `<div class="fgroup"><span class="flabel">Pilier</span>${pil.map(p=>`<button class="chip${F.pilier===p?' active':''}" data-f="pilier" data-v="${p}">${p}</button>`).join("")}</div>`;
+  document.querySelectorAll("#filters .chip").forEach(c=>c.onclick=()=>{F[c.dataset.f]=c.dataset.v;buildFilters();buildGantt();});
+}
+function buildGantt(){
+  const rows=DATA.filter(a=>(F.niveau==="Tous"||(a.niveaux||[]).includes(F.niveau))&&(F.pilier==="Tous"||(a.piliers||[]).includes(F.pilier)))
+                 .sort((x,y)=>(x.domaine||"").localeCompare(y.domaine||""));
+  const head=`<thead><tr><th class="lab">Action</th>${MONTHS.map(m=>`<th>${m}</th>`).join("")}</tr></thead>`;
+  const body=rows.map(a=>{
+    const col=pColor(a);
+    const cells=MONTHS.map((m,i)=>`<td class="mcell">${(a.mois||[]).includes(i)?`<span class="bar" style="background:${col}"></span>`:""}</td>`).join("");
+    const niv=(a.niveaux||[]).length===4?"Tous":(a.niveaux||[]).join(" · ");
+    const extra=(a.mois||[]).length?"":`<div><span class="gnote">à programmer</span></div>`;
+    return `<tr class="grow"><td class="lcell"><div class="eb">${esc(a.domaine||"")}</div><div class="nm">${esc(a.action)}</div><div class="mini"><span class="tag">${niv}</span><span class="tag">${esc(a.porteur||"")}</span>${statutBadge(a.statut)}</div>${extra}</td>${cells}</tr>`;
+  }).join("");
+  document.getElementById("gantt").innerHTML=`<table class="gantt">${head}<tbody>${body}</tbody></table>`;
+}
+function buildProjets(){
+  const rows=DATA.slice().sort((x,y)=>(x.domaine||"").localeCompare(y.domaine||""));
+  document.getElementById("projets").innerHTML=rows.map(a=>{
+    const col=pColor(a);
+    return `<div class="pj" style="border-top-color:${col}" onclick="openModal('${a._id}')">
+      <div class="eb">${esc(a.domaine||"")}</div><h3>${esc(a.action)}</h3>
+      <div class="meta"><span class="tag" style="color:${col}">${(a.piliers||[]).join(" · ")}</span><span class="tag per">${periode(a.mois)}</span><span class="tag">${(a.niveaux||[]).length===4?"Tous":(a.niveaux||[]).join(" · ")}</span>${statutBadge(a.statut)}</div></div>`;
+  }).join("");
+}
+function buildActeurs(){
+  const groups=[...new Set(ACTEURS.map(r=>r[0]))];let h=`<thead><tr><th>Acteur</th><th>Fonction</th><th>Projets</th></tr></thead><tbody>`;
+  groups.forEach(g=>{h+=`<tr class="grp"><td colspan="3">${g}</td></tr>`;ACTEURS.filter(r=>r[0]===g).forEach(r=>h+=`<tr><td><strong>${r[1]}</strong></td><td>${r[2]}</td><td>${r[3]}</td></tr>`);});
+  document.getElementById("acteurs").innerHTML=h+"</tbody>";
+}
+function buildFil(){ document.getElementById("fil").innerHTML=FIL.map(f=>`<div class="tr"><div class="from"><div class="lb">${f[1]}</div><div class="big">${f[0]}</div></div><div class="arrow">→</div><div class="to"><div class="lb">Devient ambassadeur</div><div class="big">${f[2]}</div><div class="sm">${f[3]}</div></div></div>`).join(""); }
+function buildIndic(){ let h=`<thead><tr><th>Indicateur</th><th>Repère 2025-2026</th><th>Cible 2026-2027</th><th>Source</th></tr></thead><tbody>`;INDICATEURS.forEach(r=>h+=`<tr><td><strong>${r[0]}</strong></td><td class="num">${r[1]}</td><td class="cible">${r[2]||"—"}</td><td style="color:var(--muted)">${r[3]}</td></tr>`);document.getElementById("indic").innerHTML=h+"</tbody>"; }
+
+/* ---------- détail ---------- */
+function openModal(id){
+  const a=DATA.find(x=>x._id===id);if(!a)return;const col=pColor(a);
+  document.querySelector("#modal .sheet-head").style.borderTopColor=col;
+  document.getElementById("m-eb").textContent=a.domaine||"";
+  document.getElementById("m-ttl").textContent=a.action||"";
+  const kv=(k,v)=>`<div class="kv"><dt>${k}</dt><dd>${esc(v||"—")}</dd></div>`;
+  document.getElementById("m-body").innerHTML=
+   kv("Pilier(s)",(a.piliers||[]).join(" · "))+kv("Axe (PES)",a.axe)+kv("Niveau",(a.niveaux||[]).length===4?"Tous (6e→3e)":(a.niveaux||[]).join(" · "))+
+   kv("Classes",a.classes)+kv("Période",periode(a.mois))+kv("Porteur",a.porteur)+kv("Intervenants",a.intervenants)+
+   kv("Élèves / ambassadeurs",a.eleves)+kv("Partenaires",a.partenaires)+kv("Vie sco / santé / admin",a.viesco)+kv("Statut",a.statut);
+  document.getElementById("m-edit").onclick=()=>{closeModal();openEdit(id);};
+  document.getElementById("m-del").onclick=()=>{ if(confirm("Supprimer cette action ?")){deleteAction(id);closeModal();} };
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal(){document.getElementById("modal").classList.remove("open");}
+
+/* ---------- édition ---------- */
+function buildEditForm(){
+  document.getElementById("e-niveaux").innerHTML=NIVEAUX.map(n=>`<label><input type="checkbox" value="${n}" name="e-niv">${n}</label>`).join("");
+  document.getElementById("e-piliers").innerHTML=Object.keys(PILLARS).map(p=>`<label><input type="checkbox" value="${p}" name="e-pil">${p}</label>`).join("");
+  document.getElementById("e-mois").innerHTML=MONTHS.map((m,i)=>`<label><input type="checkbox" value="${i}" name="e-moi">${m}</label>`).join("");
+  document.getElementById("e-axe").innerHTML=AXES.map(a=>`<option>${a}</option>`).join("");
+  document.getElementById("e-statut").innerHTML=STATUTS.map(s=>`<option>${s}</option>`).join("");
+}
+function openEdit(id){
+  editingId=id;const a=id?DATA.find(x=>x._id===id):null;
+  document.getElementById("e-title").textContent=a?"Modifier l'action":"Nouvelle action";
+  const V=(k,d="")=>a?(a[k]??d):d;
+  document.getElementById("e-domaine").value=V("domaine");
+  document.getElementById("e-action").value=V("action");
+  document.getElementById("e-classes").value=V("classes");
+  document.getElementById("e-porteur").value=V("porteur");
+  document.getElementById("e-intervenants").value=V("intervenants");
+  document.getElementById("e-eleves").value=V("eleves");
+  document.getElementById("e-partenaires").value=V("partenaires");
+  document.getElementById("e-viesco").value=V("viesco");
+  document.getElementById("e-axe").value=V("axe",AXES[0]);
+  document.getElementById("e-statut").value=V("statut","Nouveau");
+  const niv=a?(a.niveaux||[]):[],pil=a?(a.piliers||[]):[],moi=a?(a.mois||[]):[];
+  document.querySelectorAll('input[name="e-niv"]').forEach(c=>c.checked=niv.includes(c.value));
+  document.querySelectorAll('input[name="e-pil"]').forEach(c=>c.checked=pil.includes(c.value));
+  document.querySelectorAll('input[name="e-moi"]').forEach(c=>c.checked=moi.includes(+c.value));
+  document.getElementById("editModal").classList.add("open");
+}
+function closeEdit(){document.getElementById("editModal").classList.remove("open");}
+function saveEdit(){
+  const action=document.getElementById("e-action").value.trim();
+  if(!action){alert("Le champ « Action / démarche » est obligatoire.");return;}
+  const get=id=>document.getElementById(id).value.trim();
+  const checked=name=>[...document.querySelectorAll(`input[name="${name}"]:checked`)].map(c=>c.value);
+  const obj={
+    domaine:get("e-domaine"),action,classes:get("e-classes"),porteur:get("e-porteur"),
+    intervenants:get("e-intervenants"),eleves:get("e-eleves"),partenaires:get("e-partenaires"),
+    viesco:get("e-viesco"),axe:document.getElementById("e-axe").value,statut:document.getElementById("e-statut").value,
+    niveaux:checked("e-niv"),piliers:checked("e-pil").length?checked("e-pil"):["Agir"],
+    mois:checked("e-moi").map(Number).sort((a,b)=>a-b)
+  };
+  (editingId?updateAction(editingId,obj):addAction(obj)).then(()=>closeEdit()).catch(e=>alert("Erreur : "+e.message));
+}
+
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+function exportExcel(){
+  if(typeof XLSX==="undefined"){alert("Export indisponible : recharge la page.");return;}
+  const wb=XLSX.utils.book_new();
+  const retro=[["Domaine","Action","Niveau","Classes","Pilier(s)","Axe PES","Porteur","Intervenants","Élèves/Ambassadeurs","Partenaires","Vie sco/Santé/Admin","Statut","Période",...MONTHS]];
+  DATA.forEach(a=>retro.push([a.domaine,a.action,(a.niveaux||[]).join(" · "),a.classes,(a.piliers||[]).join(" · "),a.axe,a.porteur,a.intervenants,a.eleves,a.partenaires,a.viesco,a.statut,periode(a.mois),...MONTHS.map((m,i)=>(a.mois||[]).includes(i)?"X":"")]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(retro),"Rétro-planning");
+  const parc=[["Niveau","Action","Pilier","Période","Porteur","Statut"]];
+  NIVEAUX.forEach(n=>DATA.filter(a=>(a.niveaux||[]).includes(n)).forEach(a=>parc.push([n,a.action,primaryPillar(a),periode(a.mois),a.porteur,a.statut])));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(parc),"Parcours 6e-3e");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Catégorie","Acteur","Fonction","Projets"],...ACTEURS]),"Acteurs");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Indicateur","Repère 2025-2026","Cible 2026-2027","Source"],...INDICATEURS]),"Indicateurs");
+  XLSX.writeFile(wb,"Parcours-sante-YDM-2026-2027.xlsx");
+}
+
+init();
+</script>
+</body>
+</html>
