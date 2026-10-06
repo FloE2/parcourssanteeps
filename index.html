@@ -253,6 +253,31 @@ table.gantt thead th.lab{text-align:left;padding-left:16px;width:340px}
     <table class="tbl" id="indic"></table>
   </section>
 
+  <section class="view" data-view="annexes">
+    <div class="view-head"><div class="txt">
+      <div class="eyebrow">Annexes</div>
+      <h2>Outils numériques — accès en lecture seule</h2>
+      <p>Applications développées par l'équipe EPS, consultables sans compte et sans possibilité de modification.</p>
+    </div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px">
+      <div style="border:1px solid var(--line);border-top:4px solid var(--agir);border-radius:var(--r,12px);background:var(--surface,#fff);padding:20px 22px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--agir)">Défi lutte contre la sédentarité · 5e</div>
+        <h3 style="margin:0;font-size:19px;color:var(--ink)">Voyage à travers l'Europe</h3>
+        <p style="margin:0;color:var(--muted);line-height:1.5">Carte interactive, classements par classe et tableau de bord du défi (EPS × SVT).</p>
+        <p style="margin:0;font-size:13.5px;background:var(--agir-l);border-radius:8px;padding:8px 10px;color:var(--ink)">Accès parents : sur la page de connexion, cliquer sur <b>« 👁️ Mode consultation — Parents »</b>.</p>
+        <a href="https://floe2.github.io/voyage-europe/" target="_blank" rel="noopener" style="word-break:break-all;font-size:13.5px;color:var(--agir)">https://floe2.github.io/voyage-europe/</a>
+        <div><a class="btn sm primary" href="https://floe2.github.io/voyage-europe/" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">Ouvrir ↗</a></div>
+      </div>
+      <div style="border:1px solid var(--line);border-top:4px solid var(--connaitre);border-radius:var(--r,12px);background:var(--surface,#fff);padding:20px 22px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--connaitre)">Suivi de la condition physique · 6e → 3e</div>
+        <h3 style="margin:0;font-size:19px;color:var(--ink)">EPS Tracker — EPS Santé</h3>
+        <p style="margin:0;color:var(--muted);line-height:1.5">Fiches élèves, profils par niveau et tendances sur 4 ans.</p>
+        <p style="margin:0;font-size:13.5px;background:var(--connaitre-l);border-radius:8px;padding:8px 10px;color:var(--ink)">Accès direct en lecture seule, sans identifiant.</p>
+        <a href="https://eps-tracker-ydm.vercel.app/?viewer" target="_blank" rel="noopener" style="word-break:break-all;font-size:13.5px;color:var(--connaitre)">https://eps-tracker-ydm.vercel.app/?viewer</a>
+        <div><a class="btn sm primary" href="https://eps-tracker-ydm.vercel.app/?viewer" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">Ouvrir ↗</a></div>
+      </div>
+    </div>
+  </section>
   <section class="view" data-view="synthese">
     <div class="view-head"><div class="txt">
       <div class="eyebrow">Présentation IPR</div>
@@ -516,7 +541,7 @@ function deleteAction(id){ if(READONLY)return Promise.resolve(); if(MODE==="clou
 /* ---------- render ---------- */
 function renderAll(){ buildParcours();buildGantt();buildProjets(); }
 function buildTabs(){
-  const T=[["parcours","Parcours 6e→3e"],["retro","Rétro-planning"],["projets","Projets"],["acteurs","Acteurs"],["fil","Fil rouge ambassadeurs"],["indic","Indicateurs"]];
+  const T=[["parcours","Parcours 6e→3e"],["retro","Rétro-planning"],["projets","Projets"],["acteurs","Acteurs"],["fil","Fil rouge ambassadeurs"],["indic","Indicateurs"],["annexes","Annexes"]];
   document.getElementById("tabs").innerHTML=T.map((t,i)=>`<button class="tab${i===0?' active':''}" data-t="${t[0]}">${t[1]}</button>`).join("");
   document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");
