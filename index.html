@@ -181,6 +181,7 @@ table.gantt thead th.lab{text-align:left;padding-left:16px;width:340px}
       <button class="btn ghost" onclick="exportExcel()">⬇ Excel</button>
       <button class="btn ghost" onclick="window.print()">⬇ PDF</button>
       <button class="btn ghost" id="syn-top">▶ Synthèse</button>
+      <button class="btn ghost editonly" id="shareLink" style="display:none" onclick="copyReadOnlyLink()">🔗 Lien lecture seule</button>
     </div>
   </div>
 </header>
@@ -424,6 +425,7 @@ const FIL=[
 
 /* ---------- état ---------- */
 let DATA=[];           // working set : {_id, ...fields}
+const READONLY=new URLSearchParams(location.search).has("lecture");
 let MODE="local";      // 'local' | 'cloud'
 let db=null, auth=null, currentUser=null, canEdit=false, editingId=null;
 
@@ -437,7 +439,8 @@ function statutBadge(s){if(s==="À compléter")return'<span class="badge todo">�
 function isConfigured(){return FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith("VOTRE_") && typeof firebase!=="undefined";}
 function init(){
   buildTabs();buildLegend();buildFilters();buildActeurs();buildFil();buildIndic();buildEditForm();
-  if(isConfigured()){ MODE="cloud"; startCloud(); }
+  if(isConfigured() && READONLY){ MODE="cloud"; startReadOnly(); }
+  else if(isConfigured()){ MODE="cloud"; startCloud(); }
   else { MODE="local"; startLocal(); }
 }
 function startLocal(){
@@ -465,6 +468,29 @@ function startCloud(){
     subscribe();
   });
 }
+function startReadOnly(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db=firebase.firestore();
+  canEdit=false; toggleEditUI();
+  document.getElementById("gate").classList.remove("open");
+  const p=document.getElementById("modePill"); p.className="pill cloud"; p.textContent="Consultation — lecture seule";
+  const sl=document.getElementById("shareLink"); if(sl) sl.style.display="none";
+  db.collection("actions").onSnapshot(snap=>{
+    DATA=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    if(!DATA.length) DATA=SEED.map((x,i)=>({_id:"seed-"+i,...x}));
+    renderAll();
+  },err=>{
+    console.warn("Lecture Firestore refusée, affichage des données de référence.",err);
+    p.textContent="Consultation — lecture seule (données de référence)";
+    DATA=SEED.map((x,i)=>({_id:"seed-"+i,...x})); renderAll();
+  });
+}
+function copyReadOnlyLink(){
+  const url=location.origin+location.pathname+"?lecture";
+  const done=()=>{const b=document.getElementById("shareLink");const o=b.textContent;b.textContent="✓ Lien copié";setTimeout(()=>b.textContent=o,2000);};
+  if(navigator.clipboard) navigator.clipboard.writeText(url).then(done,()=>prompt("Lien lecture seule :",url));
+  else prompt("Lien lecture seule :",url);
+}
 function subscribe(){
   db.collection("actions").onSnapshot(snap=>{
     DATA=snap.docs.map(d=>({_id:d.id,...d.data()}));
@@ -474,7 +500,7 @@ function subscribe(){
 }
 function doSignIn(){ if(!auth)return; auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>document.getElementById("gateErr").textContent=e.message); }
 function doSignOut(){ if(auth)auth.signOut(); }
-function importSeed(){
+function importSeed(){ if(READONLY)return;
   if(MODE!=="cloud")return;
   const b=db.batch();
   SEED.forEach(a=>b.set(db.collection("actions").doc(),a));
@@ -483,9 +509,9 @@ function importSeed(){
 function toggleEditUI(){ document.querySelectorAll(".editonly").forEach(el=>el.style.display=canEdit?"":"none"); }
 
 /* ---------- CRUD ---------- */
-function addAction(obj){ if(MODE==="cloud")return db.collection("actions").add(obj); DATA.push({_id:"local-"+Date.now(),...obj}); renderAll(); return Promise.resolve(); }
-function updateAction(id,obj){ if(MODE==="cloud")return db.collection("actions").doc(id).update(obj); const i=DATA.findIndex(a=>a._id===id); if(i>=0)DATA[i]={_id:id,...obj}; renderAll(); return Promise.resolve(); }
-function deleteAction(id){ if(MODE==="cloud")return db.collection("actions").doc(id).delete(); DATA=DATA.filter(a=>a._id!==id); renderAll(); return Promise.resolve(); }
+function addAction(obj){ if(READONLY)return Promise.resolve(); if(MODE==="cloud")return db.collection("actions").add(obj); DATA.push({_id:"local-"+Date.now(),...obj}); renderAll(); return Promise.resolve(); }
+function updateAction(id,obj){ if(READONLY)return Promise.resolve(); if(MODE==="cloud")return db.collection("actions").doc(id).update(obj); const i=DATA.findIndex(a=>a._id===id); if(i>=0)DATA[i]={_id:id,...obj}; renderAll(); return Promise.resolve(); }
+function deleteAction(id){ if(READONLY)return Promise.resolve(); if(MODE==="cloud")return db.collection("actions").doc(id).delete(); DATA=DATA.filter(a=>a._id!==id); renderAll(); return Promise.resolve(); }
 
 /* ---------- render ---------- */
 function renderAll(){ buildParcours();buildGantt();buildProjets(); }
